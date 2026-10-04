@@ -1,7 +1,13 @@
 <script setup>
 import AppNavbar from './components/AppNavbar.vue'
 import HeroSection from './components/HeroSection.vue'
-import ServicesSection from './components/ServicesSection.vue'
+import AboutSection from './components/AboutSection.vue'
+import BlogSection from './components/BlogSection.vue'
+import ClientsSection from './components/ClientsSection.vue'
+import ProjectsSection from './components/ProjectsSection.vue'
+import FollowSection from './components/FollowSection.vue'
+import ContactSection from './components/ContactSection.vue'
+import AppFooter from './components/AppFooter.vue'
 </script>
 
 <template>
@@ -10,8 +16,13 @@ import ServicesSection from './components/ServicesSection.vue'
 
     <v-main>
       <HeroSection />
-
-      <ServicesSection />
+      <AboutSection />
+      <BlogSection />
+      <ClientsSection />
+      <ProjectsSection />
+      <FollowSection />
+      <ContactSection />
+      <AppFooter />
     </v-main>
   </v-app>
 </template>

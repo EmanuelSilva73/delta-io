@@ -1,262 +1,445 @@
+<script setup>
+import { computed, ref } from 'vue'
+import { hero } from '../data/site'
+
+const slides = hero.slides
+const DURATION = hero.autoplay_ms
+
+const KEYWORDS = new Set([
+  'async',
+  'await',
+  'const',
+  'let',
+  'function',
+  'if',
+  'else',
+  'return',
+  'new',
+  'for',
+  'of',
+  'import',
+  'from',
+])
+
+// Destaque de sintaxe simples: comentários, strings e palavras-chave.
+function tokenize(line) {
+  const tokens = []
+  const regex = /(\/\/.*$)|('[^']*')|([A-Za-z_$][\w$]*)/g
+  let last = 0
+  let match
+  while ((match = regex.exec(line)) !== null) {
+    if (match.index > last) tokens.push({ type: 'plain', text: line.slice(last, match.index) })
+    if (match[1]) tokens.push({ type: 'comment', text: match[1] })
+    else if (match[2]) tokens.push({ type: 'string', text: match[2] })
+    else tokens.push({ type: KEYWORDS.has(match[3]) ? 'keyword' : 'plain', text: match[3] })
+    last = regex.lastIndex
+  }
+  if (last < line.length) tokens.push({ type: 'plain', text: line.slice(last) })
+  return tokens
+}
+
+const active = ref(0)
+const cycle = ref(0)
+const paused = ref(false)
+
+const slide = computed(() => slides[active.value])
+const codeLines = computed(() => slide.value.code_lines.map(tokenize))
+
+function goTo(index) {
+  active.value = (index + slides.length) % slides.length
+  cycle.value++
+}
+
+const next = () => goTo(active.value + 1)
+const prev = () => goTo(active.value - 1)
+</script>
+
 <template>
-    <section id="inicio" class="hero">
-        <v-container max-width="1200" class="hero-container">
-            <v-row align="center" class="hero-row">
-                <v-col cols="12" md="7">
-                    <div class="hero-content">
-                        <div class="hero-label">
-                            <span class="hero-dot"></span>
-                            Tecnologia para problemas reais
-                        </div>
+  <section id="inicio" class="hero dot-grid">
+    <div class="container hero-inner">
+      <Transition name="slide-fade" mode="out-in">
+        <div :key="slide.id" class="hero-grid">
+          <div class="hero-content">
+            <p class="hero-label mono">{{ slide.label }}</p>
 
-                        <h1 class="hero-title">
-                            Sistemas feitos para o
-                            <span>dia a dia de quem usa.</span>
-                        </h1>
+            <h1 class="hero-title">
+              {{ slide.title }}<span class="cursor cursor--blink">_</span>
+            </h1>
 
-                        <p class="hero-description">
-                            Desenvolvemos sistemas web e aplicações sob medida,
-                            do levantamento de requisitos à entrega em produção.
-                        </p>
+            <p class="hero-text">{{ slide.text }}</p>
 
-                        <div class="hero-actions">
-                            <v-btn href="#contato" color="primary" size="large" rounded="lg" class="hero-button">
-                                Falar sobre um projeto
-                            </v-btn>
+            <div class="btn-row hero-actions">
+              <v-btn :href="slide.primary_button.href" class="btn btn--primary" variant="flat">
+                {{ slide.primary_button.label }}
+              </v-btn>
+              <v-btn :href="slide.secondary_button.href" class="btn btn--outline" variant="outlined">
+                {{ slide.secondary_button.label }}
+              </v-btn>
+            </div>
+          </div>
 
-                            <v-btn href="#projetos" variant="outlined" size="large" rounded="lg"
-                                class="hero-button-secondary">
-                                Ver projetos
-                            </v-btn>
-                        </div>
-                    </div>
-                </v-col>
+          <div class="code-card" aria-hidden="true">
+            <div class="code-header mono">
+              <span class="code-file">
+                <v-icon icon="mdi-file-outline" size="16" />
+                {{ slide.code_file }}
+              </span>
+              <span class="code-branch">
+                <v-icon icon="mdi-source-branch" size="15" />
+                {{ slide.code_branch }}
+              </span>
+            </div>
 
-                <v-col cols="12" md="5">
-                    <div class="hero-terminal">
-                        <div class="terminal-header">
-                            <div class="terminal-dots">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                            </div>
+            <ol class="code-body mono">
+              <li v-for="(tokens, i) in codeLines" :key="i">
+                <span class="line-number">{{ i + 1 }}</span>
+                <span class="line-code"><span
+                    v-for="(token, j) in tokens"
+                    :key="j"
+                    :class="`tk-${token.type}`"
+                  >{{ token.text }}</span></span>
+              </li>
+            </ol>
 
-                            <span class="terminal-title">
-                                delta-sistemas
-                            </span>
-                        </div>
+            <div class="code-footer mono">
+              <span class="code-status">
+                <v-icon icon="mdi-check-circle-outline" size="18" />
+                {{ slide.status_text }}
+              </span>
+              <span>{{ slide.status_time }}</span>
+            </div>
+          </div>
+        </div>
+      </Transition>
 
-                        <div class="terminal-body">
-                            <div>
-                                <span class="code-muted">$</span>
-                                <span class="code-command"> deploy</span>
-                                <span class="code-white"> sistema</span>
-                            </div>
+      <div class="hero-tabs">
+        <div class="tabs" role="tablist" :aria-label="hero.tabs_label">
+          <button
+            v-for="(item, i) in slides"
+            :key="item.id"
+            type="button"
+            role="tab"
+            class="tab"
+            :class="{ 'tab--active': i === active }"
+            :aria-selected="i === active"
+            @click="goTo(i)"
+          >
+            <span class="tab-track">
+              <span
+                v-if="i === active"
+                :key="cycle"
+                class="tab-progress"
+                :style="{ animationDuration: `${DURATION}ms`, animationPlayState: paused ? 'paused' : 'running' }"
+                @animationend="next"
+              />
+            </span>
+            <span class="tab-name mono">{{ item.tab_title }}</span>
+            <span class="tab-subtitle">{{ item.tab_subtitle }}</span>
+          </button>
+        </div>
 
-                            <div class="code-success">
-                                ✓ Build concluído
-                            </div>
-
-                            <div class="code-success">
-                                ✓ Testes executados
-                            </div>
-
-                            <div class="code-success">
-                                ✓ Deploy realizado
-                            </div>
-
-                            <div class="terminal-status">
-                                Deploy concluído em produção há 2 min
-                            </div>
-                        </div>
-                    </div>
-                </v-col>
-            </v-row>
-        </v-container>
-    </section>
+        <div class="tab-controls">
+          <button type="button" class="control" aria-label="Anterior" @click="prev">
+            <v-icon icon="mdi-chevron-left" size="20" />
+          </button>
+          <button
+            type="button"
+            class="control"
+            :aria-label="paused ? 'Continuar' : 'Pausar'"
+            @click="paused = !paused"
+          >
+            <v-icon :icon="paused ? 'mdi-play' : 'mdi-pause'" size="18" />
+          </button>
+          <button type="button" class="control" aria-label="Próximo" @click="next">
+            <v-icon icon="mdi-chevron-right" size="20" />
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
 </template>
 
 <style scoped>
 .hero {
-    min-height: calc(100vh - 80px);
-    display: flex;
-    align-items: center;
-    background: #f8f8f6;
+  color: #ffffff;
+  overflow: hidden;
 }
 
-.hero-container {
-    width: 100%;
+.hero-inner {
+  padding-top: 72px;
+  padding-bottom: 40px;
 }
 
-.hero-row {
-    min-height: calc(100vh - 80px);
-}
-
-.hero-content {
-    max-width: 700px;
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 64px;
+  min-height: 460px;
 }
 
 .hero-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 9px;
-    margin-bottom: 24px;
-    color: #666666;
-    font-size: 0.9rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-}
-
-.hero-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #111111;
+  margin: 0 0 18px;
+  color: #c9ced2;
+  font-size: 0.95rem;
 }
 
 .hero-title {
-    margin: 0;
-    color: #111111;
-    font-size: clamp(3rem, 6vw, 5.5rem);
-    font-weight: 800;
-    line-height: 0.98;
-    letter-spacing: -0.065em;
+  margin: 0;
+  max-width: 560px;
+  font-size: clamp(2.6rem, 5.4vw, 4.4rem);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
 }
 
-.hero-title span {
-    display: block;
-    color: #777777;
-}
-
-.hero-description {
-    max-width: 600px;
-    margin-top: 32px;
-    color: #555555;
-    font-size: 1.15rem;
-    line-height: 1.7;
+.hero-text {
+  margin: 28px 0 0;
+  max-width: 520px;
+  color: #c3c9cd;
+  font-size: 1.2rem;
+  font-weight: 300;
+  line-height: 1.65;
 }
 
 .hero-actions {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-top: 40px;
+  margin-top: 40px;
 }
 
-.hero-button {
-    min-height: 52px;
-    padding: 0 24px;
+/* Cartão de código */
+.code-card {
+  border: 1px solid var(--delta-border);
+  border-radius: 20px;
+  background: var(--delta-card);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
 }
 
-.hero-button-secondary {
-    min-height: 52px;
-    padding: 0 24px;
-    border-color: #cccccc;
+.code-header,
+.code-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  color: #a9b0b5;
+  font-size: 0.85rem;
 }
 
-.hero-terminal {
-    overflow: hidden;
-    border: 1px solid #292929;
-    border-radius: 16px;
-    background: #111111;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15);
+.code-header {
+  border-bottom: 1px solid var(--delta-border);
 }
 
-.terminal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid #292929;
-    background: #171717;
+.code-footer {
+  border-top: 1px solid var(--delta-border);
 }
 
-.terminal-dots {
-    display: flex;
-    gap: 6px;
+.code-file,
+.code-branch,
+.code-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.terminal-dots span {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #555555;
+.code-file .v-icon,
+.code-status .v-icon {
+  color: var(--delta-cyan);
 }
 
-.terminal-title {
-    color: #777777;
-    font-family: monospace;
-    font-size: 0.75rem;
+.code-body {
+  margin: 0;
+  padding: 22px 24px;
+  list-style: none;
+  font-size: 0.92rem;
+  line-height: 2.1;
+  color: #e6eaed;
+  overflow-x: auto;
 }
 
-.terminal-body {
-    min-height: 280px;
-    padding: 28px;
-    color: #cccccc;
-    font-family: monospace;
-    font-size: 0.9rem;
-    line-height: 2;
+.code-body li {
+  display: flex;
+  white-space: pre;
 }
 
-.code-muted {
-    color: #777777;
+.line-number {
+  flex: 0 0 28px;
+  color: #4f565b;
+  user-select: none;
 }
 
-.code-command {
-    color: #ffffff;
+.tk-keyword {
+  color: var(--delta-cyan);
 }
 
-.code-white {
-    color: #cccccc;
+.tk-string {
+  color: var(--delta-cyan-light);
 }
 
-.code-success {
-    color: #aaaaaa;
+.tk-comment {
+  color: #6f777c;
 }
 
-.terminal-status {
-    margin-top: 24px;
-    padding-top: 18px;
-    border-top: 1px solid #292929;
-    color: #777777;
-    font-size: 0.75rem;
+/* Abas do carrossel */
+.hero-tabs {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  margin-top: 72px;
+}
+
+.tabs {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.tab-track {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  margin-bottom: 18px;
+  background: #22282c;
+  overflow: hidden;
+}
+
+.tab-progress {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--delta-cyan);
+  animation-name: tab-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes tab-fill {
+  to {
+    width: 100%;
+  }
+}
+
+.tab-name {
+  color: #7d858a;
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
+}
+
+.tab-subtitle {
+  margin-top: 6px;
+  color: #6d757a;
+  font-size: 0.85rem;
+  transition: color 0.2s ease;
+}
+
+.tab--active .tab-name,
+.tab:hover .tab-name {
+  color: #ffffff;
+}
+
+.tab--active .tab-subtitle {
+  color: #b9c0c4;
+}
+
+.tab-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: #ffffff;
+  background: #000000;
+  border: 1px solid #2c3337;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.control:hover {
+  border-color: var(--delta-cyan);
+}
+
+/* Transição entre slides */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
 }
 
 @media (max-width: 960px) {
-    .hero {
-        padding: 70px 0;
-    }
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+    min-height: 0;
+  }
 
-    .hero-row {
-        min-height: auto;
-    }
+  .hero-inner {
+    padding-top: 56px;
+  }
 
-    .hero-terminal {
-        margin-top: 40px;
-    }
+  .hero-tabs {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 56px;
+  }
+
+  .tab-controls {
+    justify-content: flex-end;
+  }
 }
 
 @media (max-width: 600px) {
-    .hero {
-        padding: 50px 0;
-    }
+  .hero-text {
+    font-size: 1.05rem;
+  }
 
-    .hero-title {
-        font-size: 3.2rem;
-    }
+  .code-body {
+    font-size: 0.78rem;
+    padding: 18px 16px;
+  }
 
-    .hero-description {
-        font-size: 1rem;
-    }
+  .code-header,
+  .code-footer {
+    padding: 14px 16px;
+    font-size: 0.75rem;
+  }
 
-    .hero-actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
+  .tabs {
+    gap: 12px;
+  }
 
-    .hero-button,
-    .hero-button-secondary {
-        width: 100%;
-    }
+  .tab-subtitle {
+    display: none;
+  }
+
+  .tab-name {
+    font-size: 0.78rem;
+  }
 }
 </style>

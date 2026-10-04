@@ -1,80 +1,134 @@
+<script setup>
+import { ref } from 'vue'
+import AppLogo from './AppLogo.vue'
+import { navLinks, site } from '../data/site'
+
+const menuOpen = ref(false)
+</script>
+
 <template>
-    <v-app-bar height="80" flat color="transparent" class="navbar">
-        <v-container max-width="1200" class="navbar-container">
-            <a href="#inicio" class="logo">
-                delta<span>.io</span>
-            </a>
+  <header class="navbar">
+    <div class="container navbar-inner">
+      <AppLogo />
 
-            <v-spacer />
+      <nav class="nav-links" aria-label="Navegação principal">
+        <a v-for="link in navLinks" :key="link.id" :href="link.href">{{ link.label }}</a>
+      </nav>
 
-            <nav class="nav-links">
-                <a href="#servicos">Serviços</a>
-                <a href="#projetos">Projetos</a>
-                <a href="#blog">Blog</a>
-                <a href="#contato">Contato</a>
-            </nav>
+      <v-btn :href="site.cta.href" class="btn btn--primary navbar-cta" variant="flat">
+        {{ site.cta.label }}
+      </v-btn>
 
-            <v-btn href="#contato" color="primary" variant="flat" class="navbar-button" rounded="lg">
-                Falar sobre um projeto
-            </v-btn>
-        </v-container>
-    </v-app-bar>
+      <button
+        class="menu-toggle"
+        type="button"
+        :aria-expanded="menuOpen"
+        aria-label="Abrir menu"
+        @click="menuOpen = !menuOpen"
+      >
+        <v-icon :icon="menuOpen ? 'mdi-close' : 'mdi-menu'" size="26" />
+      </button>
+    </div>
+
+    <Transition name="menu">
+      <nav v-if="menuOpen" class="mobile-menu" aria-label="Navegação principal (mobile)">
+        <a v-for="link in navLinks" :key="link.id" :href="link.href" @click="menuOpen = false">
+          {{ link.label }}
+        </a>
+        <v-btn :href="site.cta.href" class="btn btn--primary" variant="flat" block @click="menuOpen = false">
+          {{ site.cta.label }}
+        </v-btn>
+      </nav>
+    </Transition>
+  </header>
 </template>
 
 <style scoped>
 .navbar {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #000000;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.navbar-container {
-    display: flex;
-    align-items: center;
-    width: 100%;
-}
-
-.logo {
-    flex-shrink: 0;
-    color: #111111;
-    text-decoration: none;
-    font-size: 1.5rem;
-    font-weight: 800;
-    letter-spacing: -0.06em;
-}
-
-.logo span {
-    font-weight: 400;
+.navbar-inner {
+  display: flex;
+  align-items: center;
+  height: var(--navbar-height);
 }
 
 .nav-links {
-    display: flex;
-    align-items: center;
-    gap: 32px;
-    margin-left: auto;
+  display: flex;
+  gap: 36px;
+  margin: 0 auto;
 }
 
-.nav-links a {
-    color: #333333;
-    text-decoration: none;
-    font-size: 0.95rem;
-    font-weight: 500;
-    white-space: nowrap;
-    transition: opacity 0.2s ease;
+.nav-links a,
+.mobile-menu a {
+  color: #d9dee2;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
-.nav-links a:hover {
-    opacity: 0.6;
+.nav-links a:hover,
+.mobile-menu a:hover {
+  color: var(--delta-cyan);
 }
 
-.navbar-button {
-    margin-left: 40px;
-    white-space: nowrap;
+.navbar-cta.v-btn {
+  height: 44px;
+  padding: 0 20px;
+  font-size: 0.95rem;
+}
+
+.menu-toggle {
+  display: none;
+  margin-left: auto;
+  padding: 6px;
+  color: #ffffff;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.mobile-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 24px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.menu-enter-active,
+.menu-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.menu-enter-from,
+.menu-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 @media (max-width: 800px) {
+  .nav-links,
+  .navbar-cta {
+    display: none;
+  }
 
-    .nav-links,
-    .navbar-button {
-        display: none;
-    }
+  .menu-toggle {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 801px) {
+  .mobile-menu {
+    display: none;
+  }
 }
 </style>
